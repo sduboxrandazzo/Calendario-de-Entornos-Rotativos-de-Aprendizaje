@@ -1,0 +1,57 @@
+/* Dashboard.css */
+
+/* Estilo general para el contenedor principal */
+.container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 20px 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+  }
+  
+  /* Encabezado del dashboard */
+  .dashboard-header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .dashboard-header h1 {
+    font-family: 'Montserrat', sans-serif;
+    color: #333333;
+    margin-top: 10px;
+  }
+  
+  /* Estilos para las tablas de horario */
+  .table {
+    width: 80%;              /* La tabla ocupará el 80% del ancho */
+    margin: 0 auto;          /* Centra la tabla en la página */
+    border-collapse: collapse;
+  }
+  
+  /* Aplica un borde a todas las celdas de la tabla */
+  .table th,
+  .table td {
+    border: 1px solid #020000;  /* Línea fina negra */
+    padding: 8px;
+    text-align: center;
+  }
+  
+  /* Estilo para las cabeceras de las tablas (filas con los cursos) */
+  .table th {
+    background-color: #cceeff;  /* Celeste claro */
+    color: #333;
+    font-weight: bold;
+  }
+  
+  /* Aplica un fondo celeste a las celdas vacías (por ejemplo, en almuerzo y recreo) */
+  .table td:empty {
+    background-color: #cceeff;
+  }
+  
+  /* Estilo para el logo: se reducirá a un 40% del ancho */
+  .logo {
+    width: 10%;
+    height: auto;
+    margin-bottom: 10px;
+  }
+  

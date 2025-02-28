@@ -47,14 +47,14 @@ function ScheduleView({ onSlotClick, version, reservations, onSlotReserve }) {
       .catch(error => console.error('Error al obtener horario:', error));
   }, [version]);
 
-  // Filtra los registros del horario para un día dado y obtiene los cursos (únicos)
+  // Obtiene los cursos (únicos) para un día dado
   const getCoursesForDay = (day) => {
     const items = schedule.filter(item => item.dia.toUpperCase() === day);
     const coursesSet = new Set(items.map(item => item.curso));
     return Array.from(coursesSet);
   };
 
-  // En caso de desdoblamiento, devuelve TODOS los registros para ese slot (día, hora, curso)
+  // Devuelve todos los registros (items) para (día, hora, curso)
   const getItemsForSlot = (day, time, course) => {
     return schedule.filter(
       item =>
@@ -64,25 +64,37 @@ function ScheduleView({ onSlotClick, version, reservations, onSlotReserve }) {
     );
   };
 
+  /**
+   * Obtiene la lista de entornos **ya reservados** en ese día y franja horaria,
+   * sin importar la materia (ni subgrupo).
+   * Así se bloquea globalmente para cualquier materia/submateria.
+   */
+  const getReservedEnvsForSlot = (day, time) => {
+    if (!reservations) return [];
+    return reservations
+      .filter(r => r.day === day && r.time === time)
+      .map(r => r.entorno);
+  };
+
   return (
-    <div style={{ margin: '20px' }}>
+    <div className="my-4">
       <h2>Horario</h2>
       {days.map(day => {
         const courses = getCoursesForDay(day);
         return (
-          <div key={day} style={{ marginBottom: '40px' }}>
+          <div key={day} className="mb-4">
             <h3>{day}</h3>
             <table
-              border="1"
-              cellPadding="5"
-              cellSpacing="0"
-              style={{ width: '100%', borderCollapse: 'collapse' }}
+              className="table table-bordered table-striped"
+              style={{ width: '80%', margin: '0 auto', borderCollapse: 'collapse' }}
             >
               <thead>
                 <tr>
                   <th>HORAS</th>
                   {courses.map(course => (
-                    <th key={course}>{course}</th>
+                    <th key={course} style={{ backgroundColor: '#cceeff' }}>
+                      {course}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -91,37 +103,46 @@ function ScheduleView({ onSlotClick, version, reservations, onSlotReserve }) {
                   <tr key={index}>
                     <td>{slot}</td>
                     {courses.map(course => {
-                      // Obtener todos los registros (items) para ese slot y curso
                       const items = getItemsForSlot(day, slot, course);
                       return (
                         <td key={course + slot} style={{ verticalAlign: 'top', padding: '5px' }}>
                           {items.length > 0 ? (
                             items.map((itm, idx) => {
-                              // Buscar si hay reserva para este item (comparando materia)
+                              // Busca si ya existe reserva para este (día, hora, curso, materia)
                               const rsv = reservations.find(r =>
                                 r.day === day &&
                                 r.time === slot &&
                                 r.course === course &&
                                 r.materia === itm.materia
                               );
+                              // Entornos reservados globalmente para esta franja (sin discriminar materia)
+                              const reservedEnvs = getReservedEnvsForSlot(day, slot);
+
                               return (
-                                <div key={idx} style={{ marginBottom: '5px', borderBottom: '1px solid #ccc', paddingBottom: '3px' }}>
+                                <div
+                                  key={idx}
+                                  style={{
+                                    marginBottom: '5px',
+                                    borderBottom: '1px solid #ccc',
+                                    paddingBottom: '3px',
+                                    backgroundColor: rsv ? '#d4edda' : 'transparent'
+                                  }}
+                                >
                                   <div>
                                     <strong>{itm.materia}</strong>
-                                    {itm.submateria ? ` (${itm.submateria})` : ''}
                                   </div>
                                   <div>{itm.docente}</div>
                                   {rsv ? (
-                                    <div style={{ color: 'blue' }}>
+                                    <div className="mt-1 text-success">
                                       <strong>Entorno:</strong> {rsv.entorno}
                                     </div>
                                   ) : (
                                     <select
                                       defaultValue=""
+                                      className="form-control form-control-sm mt-2"
                                       onChange={(e) => {
                                         const entornoElegido = e.target.value;
                                         if (entornoElegido) {
-                                          // Al reservar, incluimos la materia para identificar la fila
                                           onSlotReserve({
                                             day,
                                             time: slot,
@@ -129,24 +150,26 @@ function ScheduleView({ onSlotClick, version, reservations, onSlotReserve }) {
                                             materia: itm.materia,
                                             entorno: entornoElegido
                                           });
-                                          // Reseteamos el select
                                           e.target.value = "";
                                         }
                                       }}
                                     >
                                       <option value="">Reservar entorno...</option>
                                       {ENTORNOS.map(env => (
-                                        <option key={env} value={env}>{env}</option>
+                                        <option
+                                          key={env}
+                                          value={env}
+                                          disabled={reservedEnvs.includes(env)}
+                                        >
+                                          {env}
+                                        </option>
                                       ))}
                                     </select>
                                   )}
                                 </div>
                               );
                             })
-                          ) : (
-                            // Si no hay registro en el horario, la celda queda vacía
-                            null
-                          )}
+                          ) : null}
                         </td>
                       );
                     })}

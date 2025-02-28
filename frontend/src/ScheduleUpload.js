@@ -1,3 +1,4 @@
+// ScheduleUpload.js
 import React, { useState } from 'react';
 
 function ScheduleUpload({ onUploadSuccess }) {
@@ -37,11 +38,13 @@ function ScheduleUpload({ onUploadSuccess }) {
   };
 
   return (
-    <div style={{ margin: '20px', border: '1px solid #ccc', padding: '10px' }}>
+    <div className="my-4 p-3 border rounded">
       <h2>Importar Horario</h2>
-      <input type="file" accept=".csv" onChange={handleFileChange} />
-      <button onClick={handleUpload} style={{ marginLeft: '10px' }}>Subir Horario</button>
-      {message && <p>{message}</p>}
+      <div className="form-group">
+        <input type="file" accept=".csv" className="form-control-file" onChange={handleFileChange} />
+      </div>
+      <button onClick={handleUpload} className="btn btn-primary">Subir Horario</button>
+      {message && <div className="mt-2 alert alert-info">{message}</div>}
     </div>
   );
 }

@@ -1,6 +1,9 @@
+// App.js
 import React, { useState, useEffect } from 'react';
 import ScheduleView from './ScheduleView';
 import ScheduleUpload from './ScheduleUpload';
+import './Dashboard.css'; // Importa tu CSS personalizado
+import logo from './logo.png'; // Asegúrate de tener el archivo logo.png en la ruta indicada
 
 function App() {
   // Estados para el login
@@ -12,10 +15,7 @@ function App() {
   // Estado para las reservas
   const [reservations, setReservations] = useState([]);
 
-  // Estados para crear y editar reservas (se mantienen igual)
-  const [entorno, setEntorno] = useState('');
-  const [materia, setMateria] = useState('');
-  const [curso, setCurso] = useState('');
+  // Estados para crear y editar reservas (en caso de usarlos para edición)
   const [editingReservation, setEditingReservation] = useState(null);
   const [editEntorno, setEditEntorno] = useState('');
   const [editMateria, setEditMateria] = useState('');
@@ -37,13 +37,13 @@ function App() {
         const data = await response.json();
         setToken(data.token);
         localStorage.setItem('token', data.token);
-        setMessage('Login exitoso!');
+        setMessage('¡Login exitoso!');
       } else {
-        setMessage('Error en las credenciales');
+        setMessage('Error: Credenciales incorrectas');
       }
     } catch (error) {
       console.error('Error durante el login:', error);
-      setMessage('Ocurrió un error');
+      setMessage('Ocurrió un error al iniciar sesión');
     }
   };
 
@@ -59,35 +59,7 @@ function App() {
     }
   }, [token]);
 
-  // Función para crear reserva
-  const handleCreateReservation = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch('http://localhost:5000/api/reservations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({ entorno, materia, curso })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setReservations([...reservations, data.reservation]);
-        setEntorno('');
-        setMateria('');
-        setCurso('');
-        setMessage('Reserva creada exitosamente');
-      } else {
-        setMessage('Error al crear la reserva');
-      }
-    } catch (error) {
-      console.error('Error al crear la reserva:', error);
-      setMessage('Ocurrió un error');
-    }
-  };
-
-  // Funciones para editar y eliminar reservas (se mantienen igual)
+  // Función para editar reserva (se conserva el formulario de edición)
   const startEditing = (reservation) => {
     setEditingReservation(reservation.id);
     setEditEntorno(reservation.entorno);
@@ -109,13 +81,13 @@ function App() {
         const data = await response.json();
         setReservations(reservations.map(r => r.id === id ? data.reservation : r));
         setEditingReservation(null);
-        setMessage('Reserva actualizada exitosamente');
+        setMessage('Reserva actualizada correctamente');
       } else {
         setMessage('Error al actualizar la reserva');
       }
     } catch (error) {
       console.error('Error al actualizar la reserva:', error);
-      setMessage('Ocurrió un error');
+      setMessage('Ocurrió un error al actualizar la reserva');
     }
   };
 
@@ -133,47 +105,16 @@ function App() {
       }
     } catch (error) {
       console.error('Error al eliminar la reserva:', error);
-      setMessage('Ocurrió un error');
+      setMessage('Ocurrió un error al eliminar la reserva');
     }
   };
 
-  const handleSlotClick = (slotData) => {
-    alert(`Reservar para ${slotData.dia} ${slotData.hora} - ${slotData.materia}`);
-  };
-
-  // Función para actualizar el estado de refresco cuando se sube el horario exitosamente
-  const handleUploadSuccess = (data) => {
-    console.log('Horario importado:', data);
-    setScheduleVersion(prev => prev + 1);
-  };
-
-  // Si el usuario no está autenticado, mostramos el formulario de login
-  if (!token) {
-    return (
-      <div style={{ margin: '20px' }}>
-        <h1>Login</h1>
-        <form onSubmit={handleLogin}>
-          <div>
-            <label>Email:</label><br />
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div>
-            <label>Contraseña:</label><br />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
-          <button type="submit">Ingresar</button>
-        </form>
-        {message && <p>{message}</p>}
-      </div>
-    );
-  }
-
-  const handleCreateReservationSlot = async ({ day, time, course, entorno }) => {
+  // Función para crear reserva directamente desde el horario (slot)
+  const handleCreateReservationSlot = async ({ day, time, course, entorno, materia }) => {
     if (!token) {
-      setMessage('Necesitas iniciar sesión para reservar un entorno');
+      setMessage('Debes iniciar sesión para reservar un entorno');
       return;
     }
-  
     try {
       const response = await fetch('http://localhost:5000/api/reservations', {
         method: 'POST',
@@ -181,13 +122,12 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + token
         },
-        body: JSON.stringify({ day, time, course, entorno })
+        body: JSON.stringify({ day, time, course, entorno, materia })
       });
-  
       if (response.ok) {
         const data = await response.json();
         setReservations(prev => [...prev, data.reservation]);
-        setMessage('Reserva creada exitosamente para ' + entorno);
+        setMessage(`Reserva creada exitosamente para ${entorno}`);
       } else {
         setMessage('Error al crear la reserva');
       }
@@ -196,60 +136,86 @@ function App() {
       setMessage('Ocurrió un error al crear la reserva');
     }
   };
-  
 
-  // Dashboard: se muestra cuando el usuario está autenticado
+  // Variables de utilidad para estética y funcionalidad
+  const handleUploadSuccess = (data) => {
+    console.log('Horario importado:', data);
+    setScheduleVersion(prev => prev + 1);
+  };
+
+  const handleSlotClick = (slotData) => {
+    alert(`Intentando reservar para ${slotData.dia} - ${slotData.hora} - ${slotData.materia}`);
+  };
+
+  // Si el usuario no está autenticado, mostramos el formulario de login
+  if (!token) {
+    return (
+      <div className="container my-4">
+        <div className="dashboard-header text-center">
+          <img src={logo} alt="Logo" className="logo" />
+          <h1>¡Te damos la bienvenida!</h1>
+        </div>
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label>Email:</label>
+            <input type="email" className="form-control" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Contraseña:</label>
+            <input type="password" className="form-control" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          <button type="submit" className="btn btn-primary">Iniciar Sesión</button>
+        </form>
+        {message && <div className="mt-3 alert alert-info">{message}</div>}
+      </div>
+    );
+  }
+
+  // Dashboard: se reserva directamente desde la tabla
   return (
-    <div style={{ margin: '20px' }}>
-      <h1>Dashboard</h1>
-      <p>Has iniciado sesión correctamente.</p>
-      {message && <p>{message}</p>}
+    <div className="container my-4">
+      <div className="dashboard-header text-center">
+        <img src={logo} alt="Logo" className="logo" />
+        <h1>Calendario Entornos Rotativos de Aprendizaje</h1>
+      </div>
+      <p className="lead text-center">Has iniciado sesión correctamente. Explora y gestiona tus reservas de entornos de aprendizaje.</p>
+      {message && <div className="alert alert-info">{message}</div>}
 
       {/* Componente para subir el archivo CSV del horario */}
       <ScheduleUpload onUploadSuccess={handleUploadSuccess} />
 
-      {/* Componente para visualizar el horario; se pasa la prop "version" */}
-      <ScheduleView onSlotClick={handleSlotClick} version={scheduleVersion}   reservations={reservations} // <--- pasamos las reservas
-  onSlotReserve={handleCreateReservationSlot} // <--- pasamos la función para reservar
-/>
+      {/* Componente para visualizar el horario y hacer reservas directamente */}
+      <ScheduleView 
+        onSlotClick={handleSlotClick}
+        version={scheduleVersion}
+        reservations={reservations}
+        onSlotReserve={handleCreateReservationSlot}
+      />
 
-      <h2>Crear Nueva Reserva</h2>
-      <form onSubmit={handleCreateReservation}>
-        <div>
-          <label>Entorno:</label><br />
-          <input type="text" value={entorno} onChange={(e) => setEntorno(e.target.value)} required />
-        </div>
-        <div>
-          <label>Materia:</label><br />
-          <input type="text" value={materia} onChange={(e) => setMateria(e.target.value)} required />
-        </div>
-        <div>
-          <label>Curso:</label><br />
-          <input type="text" value={curso} onChange={(e) => setCurso(e.target.value)} required />
-        </div>
-        <button type="submit">Crear Reserva</button>
-      </form>
-
-      <h2>Tus Reservas</h2>
+      <h2 className="mt-5">Tus Reservas</h2>
       {reservations.length === 0 ? (
-        <p>No tienes reservas aún.</p>
+        <p>No se han realizado reservas aún.</p>
       ) : (
-        <ul>
+        <ul className="list-group">
           {reservations.map((res) => (
-            <li key={res.id}>
+            <li key={res.id} className="list-group-item d-flex justify-content-between align-items-center">
               {editingReservation === res.id ? (
                 <div>
-                  <input type="text" value={editEntorno} onChange={(e) => setEditEntorno(e.target.value)} placeholder="Entorno" />
-                  <input type="text" value={editMateria} onChange={(e) => setEditMateria(e.target.value)} placeholder="Materia" />
-                  <input type="text" value={editCurso} onChange={(e) => setEditCurso(e.target.value)} placeholder="Curso" />
-                  <button onClick={() => handleUpdateReservation(res.id)}>Guardar</button>
-                  <button onClick={() => setEditingReservation(null)}>Cancelar</button>
+                  <input type="text" className="form-control mb-1" value={editEntorno} onChange={(e) => setEditEntorno(e.target.value)} placeholder="Entorno" />
+                  <input type="text" className="form-control mb-1" value={editMateria} onChange={(e) => setEditMateria(e.target.value)} placeholder="Materia" />
+                  <input type="text" className="form-control mb-1" value={editCurso} onChange={(e) => setEditCurso(e.target.value)} placeholder="Curso" />
+                  <button onClick={() => handleUpdateReservation(res.id)} className="btn btn-warning btn-sm mr-2">Guardar</button>
+                  <button onClick={() => setEditingReservation(null)} className="btn btn-secondary btn-sm">Cancelar</button>
                 </div>
               ) : (
-                <div>
-                  <strong>ID:</strong> {res.id} | <strong>Entorno:</strong> {res.entorno} | <strong>Materia:</strong> {res.materia} | <strong>Curso:</strong> {res.curso}
-                  <button onClick={() => startEditing(res)}>Editar</button>
-                  <button onClick={() => handleDeleteReservation(res.id)}>Eliminar</button>
+                <div className="d-flex justify-content-between align-items-center w-100">
+                  <span>
+                    <strong>ID:</strong> {res.id} | <strong>Entorno:</strong> {res.entorno} | <strong>Materia:</strong> {res.materia} | <strong>Curso:</strong> {res.course || res.curso}
+                  </span>
+                  <div>
+                    <button onClick={() => startEditing(res)} className="btn btn-warning btn-sm mr-2">Editar</button>
+                    <button onClick={() => handleDeleteReservation(res.id)} className="btn btn-danger btn-sm">Eliminar</button>
+                  </div>
                 </div>
               )}
             </li>
@@ -260,8 +226,8 @@ function App() {
       <button onClick={() => {
           localStorage.removeItem('token');
           setToken('');
-        }}>
-        Cerrar sesión
+        }} className="btn btn-secondary mt-4">
+        Cerrar Sesión
       </button>
     </div>
   );

@@ -1,3 +1,5 @@
+// Index.js (Backend)
+
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
@@ -23,12 +25,12 @@ app.post('/api/login', (req, res) => {
   res.status(401).json({ error: 'Credenciales inválidas' });
 });
 
-
 // --- Middleware de Autenticación ---
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (token == null) return res.sendStatus(401);
+
   jwt.verify(token, secretKey, (err, user) => {
     if (err) return res.sendStatus(403);
     req.user = user;
@@ -55,24 +57,26 @@ let nextReservationId = 1;
 
 // Endpoint para crear una reserva (POST)
 app.post('/api/reservations', authenticateToken, (req, res) => {
-  // Agregamos day, time y entorno
-  const { day, time, course, entorno } = req.body;
-  // El docente lo tomamos del token
-  const docente = req.user.email;
+  // Ahora esperamos day, time, course, entorno, materia, submateria, docente
+  const { day, time, course, entorno, materia, submateria, docente } = req.body;
+  const userEmail = req.user.email; // El docente lo tomamos del token
 
-  // Validación básica de datos requeridos
+  // Validación básica (podrías reforzarla si deseas)
   if (!day || !time || !course || !entorno) {
     return res.status(400).json({ error: 'Faltan datos requeridos: day, time, course, entorno.' });
   }
 
-  // Crear la reserva
+  // Crear la reserva con todos los campos
   const reservation = {
     id: nextReservationId++,
-    docente,
-    day,      // LUNES, MARTES, ...
-    time,     // 8:15 a 8:55
-    course,   // 1er año, etc.
-    entorno,  // Robótica, Colaboratorio, etc.
+    docente: userEmail, // guardamos el usuario del token como "docente" de la reserva
+    day,
+    time,
+    course,
+    entorno,
+    materia: materia || "",     // opcional
+    submateria: submateria || "", // opcional
+    docenteCSV: docente || "",  // por si quieres guardar el docente que viene del CSV
     createdAt: new Date()
   };
 
@@ -80,9 +84,9 @@ app.post('/api/reservations', authenticateToken, (req, res) => {
   res.status(201).json({ message: 'Reserva creada exitosamente', reservation });
 });
 
-
 app.get('/api/reservations', authenticateToken, (req, res) => {
   const docente = req.user.email;
+  // Se devuelven solo las reservas creadas por este docente
   const userReservations = reservations.filter(r => r.docente === docente);
   res.json(userReservations);
 });
@@ -90,14 +94,18 @@ app.get('/api/reservations', authenticateToken, (req, res) => {
 app.put('/api/reservations/:id', authenticateToken, (req, res) => {
   const docente = req.user.email;
   const reservationId = parseInt(req.params.id);
-  const { entorno, materia, curso } = req.body;
+  const { entorno, materia, curso, submateria, docenteCSV } = req.body;
   const reservation = reservations.find(r => r.id === reservationId && r.docente === docente);
+
   if (!reservation) {
     return res.status(404).json({ error: 'Reserva no encontrada o no autorizada' });
   }
   if (entorno) reservation.entorno = entorno;
   if (materia) reservation.materia = materia;
-  if (curso) reservation.curso = curso;
+  if (curso) reservation.course = curso;
+  if (submateria) reservation.submateria = submateria;
+  if (docenteCSV) reservation.docenteCSV = docenteCSV;
+
   res.json({ message: 'Reserva actualizada', reservation });
 });
 
@@ -105,9 +113,11 @@ app.delete('/api/reservations/:id', authenticateToken, (req, res) => {
   const docente = req.user.email;
   const reservationId = parseInt(req.params.id);
   const index = reservations.findIndex(r => r.id === reservationId && r.docente === docente);
+
   if (index === -1) {
     return res.status(404).json({ error: 'Reserva no encontrada o no autorizada' });
   }
+
   reservations.splice(index, 1);
   res.json({ message: 'Reserva eliminada' });
 });
@@ -127,7 +137,6 @@ app.post('/api/schedule/upload', upload.single('file'), (req, res) => {
   fs.createReadStream(req.file.path)
     .pipe(csvParser())
     .on('data', (row) => {
-      // Verificar que la fila tenga un valor válido en "dia"
       if (row.dia && row.dia.trim() !== "") {
         scheduleData.push(row);
       } else {
@@ -135,7 +144,6 @@ app.post('/api/schedule/upload', upload.single('file'), (req, res) => {
       }
     })
     .on('end', () => {
-      // Borrar el archivo subido para liberar espacio
       fs.unlinkSync(req.file.path);
       res.json({ message: 'Horario importado exitosamente', data: scheduleData });
     })
@@ -144,7 +152,6 @@ app.post('/api/schedule/upload', upload.single('file'), (req, res) => {
       res.status(500).json({ error: 'Error al procesar el archivo', details: err });
     });
 });
-
 
 app.get('/api/schedule', (req, res) => {
   res.json(scheduleData);
